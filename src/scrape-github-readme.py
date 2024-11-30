@@ -1,9 +1,19 @@
+"""
+This file scrapes keywords from this beautiful github repo:
+https://github.com/e3b0c442/keywords
+
+Many thanks to e3b0c442 for compiling this data.
+"""
+
 import re
+import os
+import csv
+import json
 from collections import defaultdict
 
 def scrape_keywords(document: str):
     # Dictionary to store programming languages and their keywords
-    languages = defaultdict(lambda: {"name": "", "version": "", "keywords": []})
+    languages = defaultdict(lambda: defaultdict(list))
     
     # Regular expression patterns to match the structure
     language_pattern = r"### ([^(]+) \(([^)]+)\)"  # Match language name and version/description
@@ -12,29 +22,50 @@ def scrape_keywords(document: str):
     # Split document into lines for easier processing
     lines = document.splitlines()
     current_language = None
+    current_version = None
     
     for line in lines:
         # Check if the line defines a new programming language section
         lang_match = re.match(language_pattern, line)
         if lang_match:
             name, version = lang_match.groups()
-            current_language = f"{name} ({version})"
-            languages[current_language]["name"] = name.strip()
-            languages[current_language]["version"] = version.strip()
+            current_language = name.strip()
+            current_version = version.strip()
             continue
         
         # Extract keywords if inside a language section
-        if current_language:
+        if current_language and current_version:
             # Match valid rows of keywords
             row_match = re.match(keywords_row_pattern, line)
             if row_match:
                 # Extract keywords by splitting the matched group
                 keywords = [kw.strip() for kw in row_match.group(1).split('|') if kw.strip()]
-                languages[current_language]["keywords"].extend(keywords)
+                languages[current_language][current_version].extend(keywords)
     
-    return languages
+    return {"languages": languages}
 
-document = """
+def save_keywords(languages_data):
+    # Base directory to store the data
+    base_dir = "../data"
+    
+    # Iterate through languages and versions to save keywords to CSV
+    for lang, versions in languages_data['languages'].items():
+        for version, keywords in versions.items():
+            # Create directory structure: data/lang/version/
+            lang_dir = os.path.join(base_dir, lang, version)
+            os.makedirs(lang_dir, exist_ok=True)
+            
+            # Path for the keywords.csv file
+            keywords_csv = os.path.join(lang_dir, "keywords.csv")
+            
+            # Save keywords to CSV file
+            with open(keywords_csv, mode='w', newline='') as file:
+                writer = csv.writer(file)
+                writer.writerow(["Keyword"])  # Write header
+                for keyword in keywords:
+                    writer.writerow([keyword])  # Write each keyword
+
+document = R"""
 # Keywords
 
 A list and count of keywords in programming languages. Based on work originally
@@ -942,8 +973,12 @@ Don't see a language here? Please open a pull request adding it!
 # Scrape the keywords
 result = scrape_keywords(document)
 
-# Display the results
-for key, details in result.items():
-    print(f"Name: {details['name']}")
-    print(f"Version: {details['version']}")
-    print(f"Keywords: {', '.join(details['keywords'])}\n")
+print(json.dumps(result, indent=4))
+
+# save to json
+# Save as JSON
+with open("languages.json", "w") as file:
+    json.dump(result, file, indent=4)
+
+# Save keywords to CSV in the specified folder structure
+save_keywords(result)

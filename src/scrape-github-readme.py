@@ -46,7 +46,7 @@ def scrape_keywords(document: str):
 
 def save_keywords(languages_data):
     # Base directory to store the data
-    base_dir = "../data"
+    base_dir = "../data/csv"
     
     # Iterate through languages and versions to save keywords to CSV
     for lang, versions in languages_data['languages'].items():
@@ -977,7 +977,7 @@ print(json.dumps(result, indent=4))
 
 # save to json
 # Save as JSON
-with open("languages.json", "w") as file:
+with open("../data/json/languages.json", "w") as file:
     json.dump(result, file, indent=4)
 
 # Save keywords to CSV in the specified folder structure
